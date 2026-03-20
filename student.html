@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuizForge — Student</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --surface2: #f0ede8;
+  --border: #e0dbd2;
+  --border2: #ccc8be;
+  --text: #1a1814;
+  --muted: #7a7570;
+  --accent: #2a52a8;
+  --accent-light: #eef1fc;
+  --accent-border: #b8c5ef;
+  --red: #c0392b;
+  --red-light: #fdf0ee;
+  --green: #1e7c4a;
+  --green-light: #eefaf3;
+  --gold: #a06b00;
+  --gold-light: #fdf7e8;
+  --warn: #d4700a;
+  --warn-light: #fff3e8;
+  --radius: 10px;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Instrument Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* subtle paper lines */
+body::before{content:'';position:fixed;inset:0;background-image:repeating-linear-gradient(transparent,transparent 27px,var(--border) 28px);opacity:0.3;pointer-events:none;}
+
+.app{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh;}
+
+header{display:flex;align-items:center;justify-content:space-between;padding:0 40px;height:60px;background:var(--text);border-bottom:3px solid var(--accent);}
+.logo{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:800;color:#fff;letter-spacing:-0.02em;}
+.logo em{color:#90aaff;font-style:normal;}
+.student-badge{padding:5px 14px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);border-radius:20px;font-size:0.72rem;font-weight:600;color:rgba(255,255,255,0.8);letter-spacing:0.06em;text-transform:uppercase;}
+
+main{flex:1;max-width:760px;width:100%;margin:0 auto;padding:48px 24px;}
+
+.page{display:none;animation:fadeUp 0.3s ease;}
+.page.active{display:block;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+h1{font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;letter-spacing:-0.03em;line-height:1.1;margin-bottom:8px;}
+h2{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;}
+.sub{color:var(--muted);font-size:0.9rem;margin-bottom:36px;}
+label{display:block;font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+
+input[type=text]{width:100%;padding:13px 16px;background:var(--surface);border:1.5px solid var(--border);border-radius:8px;color:var(--text);font-family:'Instrument Sans',sans-serif;font-size:1rem;outline:none;transition:border-color 0.2s;}
+input[type=text]:focus{border-color:var(--accent);}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 26px;border-radius:8px;border:2px solid transparent;font-family:'Instrument Sans',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;transition:all 0.15s;}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);}
+.btn-primary:hover{background:#1e3d82;}
+.btn-outline{background:transparent;color:var(--text);border-color:var(--border2);}
+.btn-outline:hover{border-color:var(--text);}
+.btn-full{width:100%;}
+.btn-lg{padding:16px 32px;font-size:1rem;}
+
+/* ── START SCREEN ── */
+.start-card{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;padding:40px;box-shadow:0 2px 0 var(--border2),0 8px 32px rgba(0,0,0,0.06);}
+.start-icon{font-size:3rem;margin-bottom:20px;display:block;}
+.field{margin-bottom:20px;}
+
+/* ── QUIZ PICKER ── */
+.quiz-pick{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:14px;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 0 var(--border2);}
+.quiz-pick:hover{border-color:var(--accent);transform:translateY(-1px);box-shadow:0 4px 16px rgba(42,82,168,0.12);}
+.qp-title{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:800;margin-bottom:5px;}
+.qp-meta{font-size:0.8rem;color:var(--muted);}
+.qp-arrow{font-size:1.3rem;color:var(--muted);}
+
+/* ── QUIZ HEADER ── */
+.quiz-hdr{background:var(--text);color:#fff;border-radius:12px;padding:24px 28px;margin-bottom:28px;}
+.qh-title{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;margin-bottom:6px;}
+.qh-row{display:flex;align-items:center;justify-content:space-between;}
+.qh-progress{font-size:0.8rem;color:rgba(255,255,255,0.6);}
+.progress-bar{height:4px;background:rgba(255,255,255,0.15);border-radius:2px;margin-top:10px;overflow:hidden;}
+.progress-fill{height:100%;background:var(--accent);border-radius:2px;transition:width 0.3s;}
+
+/* ── TIMER ── */
+.timer{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;padding:5px 14px;border-radius:20px;background:rgba(255,255,255,0.1);letter-spacing:0.04em;}
+.timer.warn{background:rgba(212,112,10,0.4);color:#ffd080;}
+.timer.danger{background:rgba(192,57,43,0.5);color:#ff9090;animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.6;}}
+
+/* ── QUESTION CARD ── */
+.q-card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:28px;box-shadow:0 2px 0 var(--border2),0 4px 20px rgba(0,0,0,0.04);}
+.q-type-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:14px;}
+.tb-mc{background:var(--accent-light);color:var(--accent);}
+.tb-tf{background:var(--gold-light);color:var(--gold);}
+.tb-fill{background:var(--red-light);color:var(--red);}
+.tb-order{background:var(--green-light);color:var(--green);}
+.q-text{font-size:1.1rem;font-weight:600;line-height:1.55;margin-bottom:20px;}
+
+/* ── MC OPTIONS ── */
+.mc-opts{list-style:none;}
+.mc-opt{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1.5px solid var(--border);border-radius:8px;margin-bottom:9px;cursor:pointer;transition:all 0.15s;background:var(--surface);}
+.mc-opt:hover{border-color:var(--text);}
+.mc-opt.sel{border-color:var(--accent);background:var(--accent-light);}
+.mc-opt.correct{border-color:var(--green);background:var(--green-light);}
+.mc-opt.wrong{border-color:var(--red);background:var(--red-light);}
+.mc-opt.neutral-after{opacity:0.5;}
+.opt-ltr{width:34px;height:34px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:0.82rem;font-weight:800;flex-shrink:0;transition:all 0.15s;}
+.mc-opt.sel .opt-ltr{background:var(--accent);color:#fff;}
+.mc-opt.correct .opt-ltr{background:var(--green);color:#fff;}
+.mc-opt.wrong .opt-ltr{background:var(--red);color:#fff;}
+
+/* ── TF ── */
+.tf-opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:4px;}
+.tf-btn{padding:20px;border:2px solid var(--border);border-radius:8px;background:var(--surface);font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;cursor:pointer;transition:all 0.15s;text-align:center;}
+.tf-btn:hover{border-color:var(--text);}
+.tf-btn.sel{border-color:var(--accent);background:var(--accent-light);color:var(--accent);}
+.tf-btn.correct{border-color:var(--green);background:var(--green-light);color:var(--green);}
+.tf-btn.wrong{border-color:var(--red);background:var(--red-light);color:var(--red);}
+
+/* ── FILL ── */
+.fill-wrap{margin-top:4px;}
+.fill-wrap input{font-size:1rem;padding:14px 16px;}
+.fill-hint{font-size:0.78rem;color:var(--muted);margin-top:8px;font-style:italic;}
+
+/* ── ORDER ── */
+.order-list{list-style:none;}
+.order-item{display:flex;align-items:center;gap:12px;padding:13px 16px;border:1.5px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface);cursor:grab;user-select:none;transition:all 0.15s;}
+.order-item:active{cursor:grabbing;}
+.order-item.dragging{opacity:0.35;}
+.order-item.drag-over{border-color:var(--accent);background:var(--accent-light);}
+.order-item.correct{border-color:var(--green);background:var(--green-light);}
+.order-item.wrong{border-color:var(--red);background:var(--red-light);}
+.ord-num{width:30px;height:30px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:0.75rem;font-weight:800;flex-shrink:0;}
+.drag-icon{color:var(--muted);font-size:1rem;}
+.order-hint{font-size:0.78rem;color:var(--muted);margin-top:8px;font-style:italic;}
+
+/* ── FEEDBACK ── */
+.feedback{padding:13px 16px;border-radius:8px;margin-top:16px;font-size:0.9rem;font-weight:600;display:none;border-left:4px solid transparent;}
+.feedback.show{display:block;}
+.fb-correct{background:var(--green-light);border-left-color:var(--green);color:var(--green);}
+.fb-partial{background:var(--gold-light);border-left-color:var(--gold);color:var(--gold);}
+.fb-wrong{background:var(--red-light);border-left-color:var(--red);color:var(--red);}
+
+/* ── NAV ── */
+.nav-row{display:flex;align-items:center;justify-content:space-between;margin-top:24px;padding-top:20px;border-top:1.5px solid var(--border);}
+.nav-center{display:flex;gap:10px;}
+
+/* ── RESULTS ── */
+.score-hero{background:var(--text);color:#fff;border-radius:14px;padding:40px;text-align:center;margin-bottom:28px;}
+.score-name{font-size:0.8rem;color:rgba(255,255,255,0.5);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;}
+.score-big{font-family:'Syne',sans-serif;font-size:4rem;font-weight:800;line-height:1;margin-bottom:6px;}
+.score-pct{font-size:1rem;color:rgba(255,255,255,0.6);margin-bottom:12px;}
+.score-grade{display:inline-block;padding:6px 18px;border-radius:20px;font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;}
+
+.result-item{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-bottom:12px;border-left:4px solid var(--border2);}
+.ri-correct{border-left-color:var(--green);}
+.ri-partial{border-left-color:var(--gold);}
+.ri-wrong{border-left-color:var(--red);}
+.ri-q{font-size:0.95rem;font-weight:600;margin-bottom:6px;line-height:1.5;}
+.ri-meta{font-size:0.78rem;color:var(--muted);}
+.ri-icon{float:right;font-size:1rem;}
+.ri-pts{float:right;font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:800;margin-left:12px;}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-icon{font-size:2.5rem;margin-bottom:14px;}
+.empty-title{font-family:'Syne',sans-serif;font-size:1.2rem;font-weight:800;color:var(--text);margin-bottom:8px;}
+
+/* ── TIMEOUT ── */
+.timeout-card{background:var(--red-light);border:2px solid var(--red);border-radius:14px;padding:40px;text-align:center;}
+.timeout-icon{font-size:3rem;margin-bottom:16px;}
+.timeout-title{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;color:var(--red);margin-bottom:8px;}
+
+@media(max-width:600px){
+  header{padding:0 16px;}
+  main{padding:24px 14px;}
+  h1{font-size:1.7rem;}
+  .tf-opts{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="logo">Quiz<em>Forge</em></div>
+  <div class="student-badge">📖 Student</div>
+</header>
+<main>
+
+  <!-- ══ PAGE: START ══ -->
+  <div class="page active" id="p-start">
+    <div class="start-card">
+      <span class="start-icon">📝</span>
+      <h1 style="margin-bottom:8px;">Start a Quiz</h1>
+      <div class="sub">Enter your details to begin</div>
+      <div class="field"><label>First & Last Name</label><input type="text" id="s-name" placeholder="e.g. Thabo Nkosi"></div>
+      <div class="field"><label>Student Number</label><input type="text" id="s-num" placeholder="e.g. STU20240042"></div>
+      <button class="btn btn-primary btn-full btn-lg" onclick="goPickQuiz()">Continue →</button>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: PICK QUIZ ══ -->
+  <div class="page" id="p-pick">
+    <h1>Available Quizzes</h1>
+    <div class="sub" id="pick-sub"></div>
+    <div id="quiz-pick-list"></div>
+  </div>
+
+  <!-- ══ PAGE: TAKING QUIZ ══ -->
+  <div class="page" id="p-quiz">
+    <div class="quiz-hdr">
+      <div class="qh-title" id="qh-title"></div>
+      <div class="qh-row">
+        <div class="qh-progress" id="qh-prog"></div>
+        <div class="timer" id="timer" style="display:none;">--:--</div>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="prog-fill"></div></div>
+    </div>
+    <div id="q-area"></div>
+    <div class="nav-row">
+      <button class="btn btn-outline" id="btn-prev" onclick="prevQ()" style="visibility:hidden;">← Prev</button>
+      <div class="nav-center" id="nav-center"></div>
+      <button class="btn btn-outline" id="btn-next" onclick="nextQ()" style="visibility:hidden;">Next →</button>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: TIMEOUT ══ -->
+  <div class="page" id="p-timeout">
+    <div class="timeout-card">
+      <div class="timeout-icon">⏰</div>
+      <div class="timeout-title">Time's Up!</div>
+      <p style="color:var(--muted);margin-bottom:24px;">Your answers have been automatically submitted.</p>
+      <button class="btn btn-primary" onclick="showResults()">View My Results</button>
+    </div>
+  </div>
+
+  <!-- ══ PAGE: RESULTS ══ -->
+  <div class="page" id="p-results">
+    <div class="score-hero">
+      <div class="score-name" id="res-name"></div>
+      <div class="score-big" id="res-score"></div>
+      <div class="score-pct" id="res-pct"></div>
+      <span class="score-grade" id="res-grade"></span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <h2>Question Review</h2>
+      <button class="btn btn-outline" style="font-size:0.78rem;padding:8px 14px;" onclick="restart()">← Back to Quizzes</button>
+    </div>
+    <div id="res-breakdown"></div>
+  </div>
+
+</main>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════
+// SHARED DATA (same localStorage key as teacher)
+// ════════════════════════════════════════════════════
+function getDB(){ return JSON.parse(localStorage.getItem('qf2-data')||'{"quizzes":[],"submissions":[]}'); }
+function saveDB(db){ localStorage.setItem('qf2-data', JSON.stringify(db)); }
+
+// ════════════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════════════
+let studentName='', studentNo='';
+let activeQuiz=null;
+let answers=[];        // student answers indexed by question
+let checked=[];        // which Qs have been checked
+let shuffled=[];       // shuffled order items per Q
+let currentQ=0;
+let timerInterval=null;
+let secondsLeft=0;
+let startTime=null;
+
+// ════════════════════════════════════════════════════
+// PAGES
+// ════════════════════════════════════════════════════
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ════════════════════════════════════════════════════
+// START
+// ════════════════════════════════════════════════════
+function goPickQuiz(){
+  const name=document.getElementById('s-name').value.trim();
+  const num=document.getElementById('s-num').value.trim();
+  if(!name){alert('Please enter your name.');return;}
+  if(!num){alert('Please enter your student number.');return;}
+  studentName=name; studentNo=num;
+  renderPick();
+  showPage('p-pick');
+}
+
+function renderPick(){
+  const db=getDB();
+  const quizzes=db.quizzes.filter(q=>q.questions.length>0);
+  document.getElementById('pick-sub').textContent=`Hello, ${studentName} — choose a quiz to begin`;
+  const el=document.getElementById('quiz-pick-list');
+  if(!quizzes.length){
+    el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">No quizzes available</div><p>Ask your teacher to publish a quiz.</p></div>`;
+    return;
+  }
+  el.innerHTML=quizzes.map(q=>{
+    const pts=totalPts(q);
+    const time=q.timeMins?q.timeMins+' min':'No time limit';
+    return `<div class="quiz-pick" onclick="startQuiz('${q.id}')">
+      <div>
+        <div class="qp-title">${esc(q.title)}</div>
+        <div class="qp-meta">${q.questions.length} questions · ${pts} pts · ⏱ ${time}${q.description?` · ${esc(q.description)}`:''}</div>
+      </div>
+      <div class="qp-arrow">›</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════════════
+// START QUIZ
+// ════════════════════════════════════════════════════
+function startQuiz(id){
+  const db=getDB();
+  activeQuiz=db.quizzes.find(q=>q.id===id);
+  if(!activeQuiz) return;
+  answers=new Array(activeQuiz.questions.length).fill(null);
+  checked=new Array(activeQuiz.questions.length).fill(false);
+  shuffled=activeQuiz.questions.map(q=>q.type==='order'?shuffle([...q.items]):null);
+  currentQ=0;
+  startTime=Date.now();
+
+  document.getElementById('qh-title').textContent=activeQuiz.title;
+  showPage('p-quiz');
+  if(activeQuiz.timeMins && activeQuiz.timeMins>0){
+    secondsLeft=activeQuiz.timeMins*60;
+    startTimer();
+  } else {
+    document.getElementById('timer').style.display='none';
+  }
+  renderQ();
+}
+
+// ════════════════════════════════════════════════════
+// TIMER
+// ════════════════════════════════════════════════════
+function startTimer(){
+  const el=document.getElementById('timer');
+  el.style.display='';
+  updateTimerDisplay();
+  timerInterval=setInterval(()=>{
+    secondsLeft--;
+    updateTimerDisplay();
+    if(secondsLeft<=0){
+      clearInterval(timerInterval);
+      handleTimeout();
+    }
+  },1000);
+}
+
+function updateTimerDisplay(){
+  const el=document.getElementById('timer');
+  const m=Math.floor(secondsLeft/60), s=secondsLeft%60;
+  el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  el.className='timer';
+  if(secondsLeft<=60) el.classList.add('danger');
+  else if(secondsLeft<=activeQuiz.timeMins*60*0.2) el.classList.add('warn');
+}
+
+function handleTimeout(){
+  clearInterval(timerInterval);
+  autoSubmit();
+  showPage('p-timeout');
+}
+
+function autoSubmit(){
+  // collect fill input if open
+  const fi=document.getElementById('fill-input');
+  if(fi) answers[currentQ]=fi.value.trim();
+  const oi=document.getElementById('order-student-list');
+  if(oi) answers[currentQ]=[...oi.querySelectorAll('.order-item')].map(el=>el.dataset.item);
+  saveSubmission();
+}
+
+// ════════════════════════════════════════════════════
+// RENDER QUESTION
+// ════════════════════════════════════════════════════
+function renderQ(){
+  const quiz=activeQuiz;
+  const q=quiz.questions[currentQ];
+  const total=quiz.questions.length;
+  const isChecked=checked[currentQ];
+
+  document.getElementById('qh-prog').textContent=`Question ${currentQ+1} of ${total}`;
+  document.getElementById('prog-fill').style.width=((currentQ+1)/total*100)+'%';
+
+  const btnPrev=document.getElementById('btn-prev');
+  const btnNext=document.getElementById('btn-next');
+  btnPrev.style.visibility=currentQ===0?'hidden':'';
+  btnNext.style.visibility=currentQ===total-1?'hidden':'';
+
+  const nc=document.getElementById('nav-center');
+  const isLast=currentQ===total-1;
+  if(!isChecked){
+    nc.innerHTML=`<button class="btn btn-primary" onclick="checkAnswer()">Check Answer</button>`;
+  } else if(isLast && checked.every(Boolean)){
+    nc.innerHTML=`<button class="btn btn-primary" onclick="finalSubmit()">Submit Quiz →</button>`;
+  } else {
+    nc.innerHTML='';
+  }
+
+  const typeLabel={mc:'Multiple Choice',tf:'True / False',fill:'Fill in Blank',order:'Ordering'};
+  const tbCls={mc:'tb-mc',tf:'tb-tf',fill:'tb-fill',order:'tb-order'};
+  const ans=answers[currentQ];
+
+  let inner='';
+
+  if(q.type==='mc'){
+    inner+=`<ul class="mc-opts">`;
+    q.options.forEach((opt,i)=>{
+      let cls='';
+      if(isChecked){
+        const bestPts=Math.max(...q.options.map(o=>o.pts));
+        if(opt.pts===bestPts) cls='correct';
+        else if(ans===i) cls='wrong';
+        else cls='neutral-after';
+      } else if(ans===i) cls='sel';
+      const onclick=isChecked?'':` onclick="selectMC(${i})"`;
+      inner+=`<li class="mc-opt ${cls}"${onclick}>
+        <div class="opt-ltr">${String.fromCharCode(65+i)}</div>
+        <span>${esc(opt.text)}</span>
+        ${isChecked?`<span style="margin-left:auto;font-size:0.78rem;opacity:0.6;">${opt.pts}pts</span>`:''}
+      </li>`;
+    });
+    inner+=`</ul>`;
+    if(isChecked){
+      const chosen=ans!=null?q.options[ans]:null;
+      const bestPts=Math.max(...q.options.map(o=>o.pts));
+      const earned=chosen?Math.max(0,chosen.pts):0;
+      const cls=earned===bestPts?'fb-correct':earned>0?'fb-partial':'fb-wrong';
+      const icon=earned===bestPts?'✓':earned>0?'◑':'✗';
+      inner+=`<div class="feedback ${cls} show">${icon} You earned ${earned} / ${bestPts} points${chosen?` — "${esc(chosen.text)}"`:' — no answer selected'}</div>`;
+    }
+  }
+
+  else if(q.type==='tf'){
+    inner+=`<div class="tf-opts">`;
+    ['true','false'].forEach(v=>{
+      const isBest=(v==='true'?parseFloat(q.truePts||0):parseFloat(q.falsePts||0))===Math.max(parseFloat(q.truePts||0),parseFloat(q.falsePts||0));
+      let cls='';
+      if(isChecked){
+        if(isBest) cls='correct';
+        else if(ans===v) cls='wrong';
+      } else if(ans===v) cls='sel';
+      const onclick=isChecked?'':` onclick="selectTF('${v}')"`;
+      inner+=`<button class="tf-btn ${cls}"${onclick}>${v==='true'?'True':'False'}</button>`;
+    });
+    inner+=`</div>`;
+    if(isChecked){
+      const earned=ans==='true'?parseFloat(q.truePts||0):ans==='false'?parseFloat(q.falsePts||0):0;
+      const max=Math.max(parseFloat(q.truePts||0),parseFloat(q.falsePts||0));
+      const cls=earned===max?'fb-correct':earned>0?'fb-partial':'fb-wrong';
+      inner+=`<div class="feedback ${cls} show">${earned===max?'✓':'✗'} You earned ${earned} / ${max} points</div>`;
+    }
+  }
+
+  else if(q.type==='fill'){
+    const disabled=isChecked?'disabled':'';
+    const borderStyle=isChecked?(ans&&q.answers.includes(ans.toLowerCase())?'border-color:var(--green);background:var(--green-light);':'border-color:var(--red);background:var(--red-light);'):'';
+    inner+=`<div class="fill-wrap">
+      <input type="text" id="fill-input" placeholder="Type your answer…" value="${esc(ans||'')}" ${disabled} style="${borderStyle}" oninput="answers[currentQ]=this.value">
+      ${!isChecked?'<div class="fill-hint">Type your answer then click Check Answer</div>':''}
+    </div>`;
+    if(isChecked){
+      const correct=ans&&q.answers.includes(ans.toLowerCase());
+      const cls=correct?'fb-correct':'fb-wrong';
+      inner+=`<div class="feedback ${cls} show">${correct?'✓ Correct! '+q.pts+' pts':'✗ Incorrect. Accepted: '+q.answers.join(' / ')}</div>`;
+    }
+  }
+
+  else if(q.type==='order'){
+    const current=ans||shuffled[currentQ];
+    inner+=`<ul class="order-list" id="order-student-list">`;
+    current.forEach((item,i)=>{
+      let cls='';
+      if(isChecked) cls=item===q.items[i]?'correct':'wrong';
+      const draggable=isChecked?'false':'true';
+      inner+=`<li class="order-item ${cls}" draggable="${draggable}" data-item="${esc(item)}"
+        ondragstart="dragStart(event)" ondragover="dragOver(event)" ondrop="dropItem(event)" ondragleave="dragLeave(event)">
+        <span class="drag-icon">${isChecked?'':' ⠿'}</span>
+        <div class="ord-num">${i+1}</div>
+        <span>${esc(item)}</span>
+      </li>`;
+    });
+    inner+=`</ul>`;
+    if(!isChecked) inner+=`<div class="order-hint">Drag items into the correct order, then click Check Answer</div>`;
+    else{
+      const correct=(ans||shuffled[currentQ]).join('|')===q.items.join('|');
+      const cls=correct?'fb-correct':'fb-wrong';
+      inner+=`<div class="feedback ${cls} show">${correct?'✓ Perfect order! '+q.pts+' pts':'✗ Incorrect order. See above for correct positions.'}</div>`;
+    }
+  }
+
+  document.getElementById('q-area').innerHTML=`
+    <div class="q-card">
+      <span class="q-type-badge ${tbCls[q.type]}">${typeLabel[q.type]}</span>
+      <div class="q-text">${esc(q.text)}</div>
+      ${inner}
+    </div>`;
+}
+
+// ════════════════════════════════════════════════════
+// ANSWER SELECTION
+// ════════════════════════════════════════════════════
+function selectMC(i){ if(checked[currentQ])return; answers[currentQ]=i; renderQ(); }
+function selectTF(v){ if(checked[currentQ])return; answers[currentQ]=v; renderQ(); }
+
+function checkAnswer(){
+  const q=activeQuiz.questions[currentQ];
+  if(q.type==='fill'){
+    const fi=document.getElementById('fill-input');
+    answers[currentQ]=fi?fi.value.trim():'';
+  }
+  if(q.type==='order'){
+    const items=[...document.querySelectorAll('#order-student-list .order-item')];
+    answers[currentQ]=items.map(el=>el.dataset.item);
+  }
+  if(q.type==='mc' && answers[currentQ]===null){alert('Please select an option.');return;}
+  if(q.type==='tf' && !answers[currentQ]){alert('Please select True or False.');return;}
+  checked[currentQ]=true;
+  renderQ();
+}
+
+function prevQ(){ if(currentQ>0){currentQ--;renderQ();} }
+function nextQ(){ if(currentQ<activeQuiz.questions.length-1){currentQ++;renderQ();} }
+
+// ════════════════════════════════════════════════════
+// SUBMIT
+// ════════════════════════════════════════════════════
+function finalSubmit(){
+  clearInterval(timerInterval);
+  const fi=document.getElementById('fill-input');
+  if(fi) answers[currentQ]=fi.value.trim();
+  const oi=document.getElementById('order-student-list');
+  if(oi) answers[currentQ]=[...oi.querySelectorAll('.order-item')].map(el=>el.dataset.item);
+  saveSubmission();
+  showResults();
+}
+
+function saveSubmission(){
+  const db=getDB();
+  const timeTaken=Math.round((Date.now()-startTime)/1000);
+  const earned=calcEarned();
+  const sub={
+    quizId:activeQuiz.id,
+    name:studentName,
+    studentNo:studentNo,
+    answers:[...answers],
+    earned,
+    timeTaken,
+    submittedAt:Date.now()
+  };
+  db.submissions.push(sub);
+  saveDB(db);
+}
+
+function calcEarned(){
+  let total=0;
+  activeQuiz.questions.forEach((q,i)=>{
+    const ans=answers[i];
+    if(q.type==='mc'){
+      if(ans!=null) total+=Math.max(0,q.options[ans]?.pts||0);
+    } else if(q.type==='tf'){
+      if(ans==='true') total+=Math.max(0,parseFloat(q.truePts||0));
+      else if(ans==='false') total+=Math.max(0,parseFloat(q.falsePts||0));
+    } else if(q.type==='fill'){
+      if(ans&&q.answers.includes(ans.toLowerCase())) total+=parseFloat(q.pts||1);
+    } else if(q.type==='order'){
+      const order=ans||[];
+      if(order.join('|')===q.items.join('|')) total+=parseFloat(q.pts||1);
+    }
+  });
+  return total;
+}
+
+// ════════════════════════════════════════════════════
+// RESULTS
+// ════════════════════════════════════════════════════
+function showResults(){
+  const pts=totalPts(activeQuiz);
+  const earned=calcEarned();
+  const pct=pts?Math.round(earned/pts*100):0;
+  const grade=pct>=80?'Distinction':pct>=70?'Merit':pct>=50?'Pass':'Fail';
+  const gradeColor=pct>=70?'#5dd68c':pct>=50?'#f7c46a':'#f76a6a';
+  const gradeBg=pct>=70?'rgba(93,214,140,0.15)':pct>=50?'rgba(247,196,106,0.15)':'rgba(247,106,106,0.15)';
+
+  document.getElementById('res-name').textContent=`${studentName} · ${studentNo}`;
+  document.getElementById('res-score').textContent=`${earned} / ${pts}`;
+  document.getElementById('res-pct').textContent=`${pct}%`;
+  document.getElementById('res-grade').textContent=grade;
+  document.getElementById('res-grade').style.cssText=`color:${gradeColor};background:${gradeBg};`;
+
+  const typeLabel={mc:'Multiple Choice',tf:'True/False',fill:'Fill in Blank',order:'Ordering'};
+  document.getElementById('res-breakdown').innerHTML=activeQuiz.questions.map((q,i)=>{
+    const ans=answers[i];
+    let earned2=0, max=0, detail='';
+
+    if(q.type==='mc'){
+      max=Math.max(...q.options.map(o=>o.pts));
+      if(ans!=null) earned2=Math.max(0,q.options[ans]?.pts||0);
+      const chosen=ans!=null?q.options[ans]:null;
+      const best=q.options.find(o=>o.pts===max);
+      detail=earned2===max?'Correct':ans===null?'Not answered':`Your answer: "${chosen?.text||''}" · Best: "${best?.text||''}"`;
+    } else if(q.type==='tf'){
+      max=Math.max(parseFloat(q.truePts||0),parseFloat(q.falsePts||0));
+      if(ans==='true') earned2=Math.max(0,parseFloat(q.truePts||0));
+      else if(ans==='false') earned2=Math.max(0,parseFloat(q.falsePts||0));
+      const correctVal=parseFloat(q.truePts||0)>=parseFloat(q.falsePts||0)?'true':'false';
+      detail=earned2===max?'Correct':ans?`You chose ${ans}, correct is ${correctVal}`:'Not answered';
+    } else if(q.type==='fill'){
+      max=parseFloat(q.pts||1);
+      const correct=ans&&q.answers.includes(ans.toLowerCase());
+      if(correct) earned2=max;
+      detail=correct?`Correct: "${ans}"`:`Your answer: "${ans||''}" · Accepted: ${q.answers.join(', ')}`;
+    } else if(q.type==='order'){
+      max=parseFloat(q.pts||1);
+      const order=ans||[];
+      const correct=order.join('|')===q.items.join('|');
+      if(correct) earned2=max;
+      detail=correct?'Correct order':'Incorrect order';
+    }
+
+    const cls=earned2===max?'ri-correct':earned2>0?'ri-partial':'ri-wrong';
+    const icon=earned2===max?'✓':earned2>0?'◑':'✗';
+    return `<div class="result-item ${cls}">
+      <span class="ri-pts">${earned2}/${max}</span>
+      <span class="ri-icon">${icon}</span>
+      <div class="ri-q">${i+1}. ${esc(q.text)}</div>
+      <div class="ri-meta">${typeLabel[q.type]} · ${detail}</div>
+    </div>`;
+  }).join('');
+
+  showPage('p-results');
+}
+
+function restart(){
+  clearInterval(timerInterval);
+  activeQuiz=null;
+  renderPick();
+  showPage('p-pick');
+}
+
+// ════════════════════════════════════════════════════
+// DRAG & DROP (ordering)
+// ════════════════════════════════════════════════════
+let dragIdx=null;
+function dragStart(e){
+  dragIdx=[...e.target.parentNode.children].indexOf(e.target);
+  e.target.classList.add('dragging');
+}
+function dragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function dragLeave(e){e.currentTarget.classList.remove('drag-over');}
+function dropItem(e){
+  e.preventDefault();
+  const list=document.getElementById('order-student-list');
+  const items=[...list.querySelectorAll('.order-item')];
+  const destIdx=items.indexOf(e.currentTarget);
+  if(dragIdx===null||dragIdx===destIdx){e.currentTarget.classList.remove('drag-over');return;}
+  const cur=answers[currentQ]||[...shuffled[currentQ]];
+  const moved=cur.splice(dragIdx,1)[0];
+  cur.splice(destIdx,0,moved);
+  answers[currentQ]=cur;
+  e.currentTarget.classList.remove('drag-over');
+  renderQ();
+}
+
+// ════════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════════
+function totalPts(quiz){
+  return quiz.questions.reduce((s,q)=>{
+    if(q.type==='mc') return s+Math.max(...q.options.map(o=>o.pts));
+    if(q.type==='tf') return s+Math.max(parseFloat(q.truePts||0),parseFloat(q.falsePts||0));
+    if(q.type==='fill') return s+parseFloat(q.pts||1);
+    if(q.type==='order') return s+parseFloat(q.pts||1);
+    return s;
+  },0);
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+</body>
+</html>
