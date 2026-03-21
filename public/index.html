@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QuizForge</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Instrument Sans',sans-serif;background:#0d0d0f;color:#e8e8f0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;}
+.wrap{position:relative;z-index:1;text-align:center;max-width:480px;width:100%;}
+.logo{font-family:'Syne',sans-serif;font-size:2.8rem;font-weight:800;letter-spacing:-0.03em;margin-bottom:12px;}
+.logo em{color:#7c6af7;font-style:normal;}
+.tagline{color:#7070a0;font-size:0.95rem;margin-bottom:56px;}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.portal{display:flex;flex-direction:column;align-items:center;padding:36px 24px;background:#16161a;border:1px solid #2a2a35;border-radius:14px;text-decoration:none;color:inherit;transition:all 0.2s;cursor:pointer;}
+.portal:hover{border-color:#7c6af7;transform:translateY(-3px);box-shadow:0 12px 40px rgba(124,106,247,0.15);}
+.portal-icon{font-size:2.5rem;margin-bottom:16px;}
+.portal-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;margin-bottom:6px;}
+.portal-sub{font-size:0.78rem;color:#7070a0;line-height:1.5;}
+.status{margin-top:32px;font-size:0.75rem;color:#3a3a55;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Quiz<em>Forge</em></div>
+  <div class="tagline">Quiz creation and response platform</div>
+  <div class="cards">
+    <a class="portal" href="/teacher.html">
+      <div class="portal-icon">🎓</div>
+      <div class="portal-title">Teacher</div>
+      <div class="portal-sub">Create quizzes & review responses</div>
+    </a>
+    <a class="portal" href="/responder.html">
+      <div class="portal-icon">📝</div>
+      <div class="portal-title">Responder</div>
+      <div class="portal-sub">Take a quiz</div>
+    </a>
+  </div>
+  <div class="status" id="status">Checking connection…</div>
+</div>
+<script>
+fetch('/api/quizzes')
+  .then(r=>r.ok?document.getElementById('status').textContent='✅ Connected to database':document.getElementById('status').textContent='⚠️ Database connection issue')
+  .catch(()=>document.getElementById('status').textContent='⚠️ Cannot reach server');
+</script>
+</body>
+</html>
