@@ -117,6 +117,22 @@ hr{border:none;border-top:1px solid var(--border);margin:28px 0;}
 .toast-ok{background:var(--green-dim);border:1px solid var(--green);color:var(--green);}
 .toast-err{background:var(--red-dim);border:1px solid var(--red);color:var(--red);}
 @keyframes slideIn{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+
+.toggle-wrap{display:flex;align-items:center;gap:12px;}
+.toggle{position:relative;width:48px;height:26px;flex-shrink:0;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{position:absolute;cursor:pointer;inset:0;background:var(--border2);border-radius:26px;transition:0.3s;}
+.toggle-slider:before{position:absolute;content:'';height:18px;width:18px;left:4px;bottom:4px;background:white;border-radius:50%;transition:0.3s;}
+.toggle input:checked+.toggle-slider{background:var(--green);}
+.toggle input:checked+.toggle-slider:before{transform:translateX(22px);}
+.toggle-label{font-size:0.82rem;font-weight:600;color:var(--muted);}
+.review-banner{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-radius:10px;margin-bottom:20px;border:1px solid;}
+.review-banner.open{background:var(--green-dim);border-color:var(--green);}
+.review-banner.closed{background:var(--surface2);border-color:var(--border2);}
+.review-banner-text{font-size:0.85rem;font-weight:600;}
+.review-banner.open .review-banner-text{color:var(--green);}
+.review-banner.closed .review-banner-text{color:var(--muted);}
+
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
 @media(max-width:700px){header{padding:0 16px;}main{padding:28px 14px;}  .stats-row{grid-template-columns:repeat(2,1fr);}.type-grid{grid-template-columns:repeat(2,1fr);}h1{font-size:1.8rem;}}
@@ -156,6 +172,19 @@ hr{border:none;border-top:1px solid var(--border);margin:28px 0;}
     <div class="section-hdr">
       <div><h2 id="subs-quiz-title">Results</h2><div class="sub" id="subs-quiz-sub"></div></div>
       <button class="btn btn-outline btn-sm" onclick="goEdit()">Edit Quiz</button>
+    </div>
+    <div class="review-banner closed" id="review-banner">
+      <div>
+        <div class="review-banner-text" id="review-banner-text">🔒 Reviews Closed — Responders cannot see their breakdown yet</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:3px;">Toggle to open reviews after the closing date</div>
+      </div>
+      <div class="toggle-wrap">
+        <span class="toggle-label" id="toggle-label">Closed</span>
+        <label class="toggle">
+          <input type="checkbox" id="reviews-toggle" onchange="toggleReviews(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
     </div>
     <div class="stats-row" id="stats-row"></div>
     <div class="card" style="padding:0;overflow:hidden;">
@@ -533,10 +562,37 @@ async function loadSubs(){
   document.getElementById('subs-quiz-title').textContent=viewingQuiz.title;
   document.getElementById('subs-quiz-sub').textContent=`${viewingQuiz.questions.length} questions · ${totalPts(viewingQuiz)} pts`;
   document.getElementById('sub-tbody').innerHTML=`<tr><td colspan="8" style="text-align:center;padding:28px;"><span class="spinner"></span></td></tr>`;
+  // Set review toggle state
+  const open=viewingQuiz.reviews_open||false;
+  const toggle=document.getElementById('reviews-toggle');
+  const banner=document.getElementById('review-banner');
+  const bannerText=document.getElementById('review-banner-text');
+  const toggleLabel=document.getElementById('toggle-label');
+  toggle.checked=open;
+  banner.className='review-banner '+(open?'open':'closed');
+  bannerText.textContent=open?'🔓 Reviews Open — Responders can now see their full breakdown':'🔒 Reviews Closed — Responders cannot see their breakdown yet';
+  toggleLabel.textContent=open?'Open':'Closed';
   try{
     submissions=await api('GET',`/quizzes/${viewingQuiz.id}/submissions`);
     renderSubs();
   }catch(e){toast('Failed to load submissions',false);}
+}
+
+async function toggleReviews(open){
+  try{
+    viewingQuiz=await api('PATCH',`/quizzes/${viewingQuiz.id}/reviews`,{reviews_open:open});
+    editingQuiz=viewingQuiz;
+    const banner=document.getElementById('review-banner');
+    const bannerText=document.getElementById('review-banner-text');
+    const toggleLabel=document.getElementById('toggle-label');
+    banner.className='review-banner '+(open?'open':'closed');
+    bannerText.textContent=open?'🔓 Reviews Open — Responders can now see their full breakdown':'🔒 Reviews Closed — Responders cannot see their breakdown yet';
+    toggleLabel.textContent=open?'Open':'Closed';
+    toast(open?'Reviews opened — responders can now see results':'Reviews closed');
+    // Update in local quizzes array too
+    const idx=quizzes.findIndex(q=>q.id===viewingQuiz.id);
+    if(idx>-1) quizzes[idx]=viewingQuiz;
+  }catch(e){toast('Failed to update reviews',false);}
 }
 
 function renderSubs(){

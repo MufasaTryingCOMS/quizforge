@@ -383,9 +383,17 @@ function renderQ(){
   document.getElementById('btn-next').style.visibility=currentQ===total-1?'hidden':'';
   const nc=document.getElementById('nav-center');
   const isLast=currentQ===total-1;
-  if(!isChecked)nc.innerHTML=`<button class="btn btn-primary" onclick="checkAnswer()">Check Answer</button>`;
-  else if(isLast&&checked.every(Boolean))nc.innerHTML=`<button class="btn btn-primary" onclick="finalSubmit()">Submit Quiz →</button>`;
-  else nc.innerHTML='';
+  const allAnswered=answers.every((a,i)=>{
+    const q=quiz.questions[i];
+    if(q.type==='mc') return a!==null;
+    if(q.type==='tf') return !!a;
+    if(q.type==='fill') return a!==null&&a!=='';
+    if(q.type==='order') return Array.isArray(a)&&a.length>0;
+    return false;
+  });
+  if(isLast&&allAnswered) nc.innerHTML=`<button class="btn btn-primary" onclick="finalSubmit()">Submit Quiz →</button>`;
+  else if(!isLast) nc.innerHTML=`<button class="btn btn-primary" onclick="saveAndNext()">Save & Next →</button>`;
+  else nc.innerHTML=`<div style="font-size:0.82rem;color:var(--muted);">Answer all questions to submit</div>`;
   const typeLabel={mc:'Multiple Choice',tf:'True / False',fill:'Fill in Blank',order:'Ordering'};
   const tbCls={mc:'tb-mc',tf:'tb-tf',fill:'tb-fill',order:'tb-order'};
   const ans=answers[currentQ];
@@ -395,19 +403,12 @@ function renderQ(){
     inner+=`<ul class="mc-opts">`;
     q.options.forEach((opt,i)=>{
       let cls='';
-      if(isChecked){const best=Math.max(...q.options.map(o=>o.pts));cls=opt.pts===best?'correct':ans===i?'wrong':'neutral-after';}
-      else if(ans===i)cls='sel';
-      inner+=`<li class="mc-opt ${cls}"${isChecked?'':` onclick="selectMC(${i})"`}>
+      if(ans===i)cls='sel';
+      inner+=`<li class="mc-opt ${cls}" onclick="selectMC(${i})">
         <div class="opt-ltr">${String.fromCharCode(65+i)}</div><span>${esc(opt.text)}</span>
-        ${isChecked?`<span style="margin-left:auto;font-size:0.78rem;opacity:0.6;">${opt.pts}pts</span>`:''}
       </li>`;
     });
     inner+=`</ul>`;
-    if(isChecked){
-      const chosen=ans!=null?q.options[ans]:null,best=Math.max(...q.options.map(o=>o.pts)),earned=chosen?Math.max(0,chosen.pts):0;
-      const cls=earned===best?'fb-correct':earned>0?'fb-partial':'fb-wrong';
-      inner+=`<div class="feedback ${cls} show">${earned===best?'✓':earned>0?'◑':'✗'} You earned ${earned} / ${best} pts${chosen?` — "${esc(chosen.text)}"`:' — no answer'}</div>`;
-    }
   }
   else if(q.type==='tf'){
     inner+=`<div class="tf-opts">`;
@@ -416,35 +417,25 @@ function renderQ(){
       const maxPts=Math.max(parseFloat(q.truePts||0),parseFloat(q.falsePts||0));
       const isBest=pts===maxPts;
       let cls='';
-      if(isChecked)cls=isBest?'correct':ans===v?'wrong':'';
-      else if(ans===v)cls='sel';
-      inner+=`<button class="tf-btn ${cls}"${isChecked?'':` onclick="selectTF('${v}')"`}>${v==='true'?'True':'False'}</button>`;
+      if(ans===v)cls='sel';
+      inner+=`<button class="tf-btn ${cls}" onclick="selectTF('${v}')">${v==='true'?'True':'False'}</button>`;
     });
     inner+=`</div>`;
-    if(isChecked){
-      const earned=ans==='true'?parseFloat(q.truePts||0):ans==='false'?parseFloat(q.falsePts||0):0;
-      const max=Math.max(parseFloat(q.truePts||0),parseFloat(q.falsePts||0));
-      inner+=`<div class="feedback ${earned===max?'fb-correct':earned>0?'fb-partial':'fb-wrong'} show">${earned===max?'✓':'✗'} You earned ${Math.max(0,earned)} / ${max} pts</div>`;
-    }
   }
   else if(q.type==='fill'){
-    const disabled=isChecked?'disabled':'';
-    const borderStyle=isChecked?(ans&&q.answers.includes(ans.toLowerCase())?'border-color:var(--green);background:var(--green-light);':'border-color:var(--red);background:var(--red-light);'):'';
-    inner+=`<div class="fill-wrap"><input type="text" id="fill-input" placeholder="Type your answer…" value="${esc(ans||'')}" ${disabled} style="${borderStyle}" oninput="answers[currentQ]=this.value">${!isChecked?'<div class="fill-hint">Type your answer then click Check Answer</div>':''}</div>`;
-    if(isChecked){const correct=ans&&q.answers.includes(ans.toLowerCase());inner+=`<div class="feedback ${correct?'fb-correct':'fb-wrong'} show">${correct?'✓ Correct! '+q.pts+' pts':'✗ Incorrect. Accepted: '+q.answers.join(' / ')}</div>`;}
+    inner+=`<div class="fill-wrap"><input type="text" id="fill-input" placeholder="Type your answer…" value="${esc(ans||'')}" oninput="answers[currentQ]=this.value"><div class="fill-hint">Type your answer then click Save &amp; Next</div></div>`;
+
   }
   else if(q.type==='order'){
     const current=ans||shuffled[currentQ];
     inner+=`<ul class="order-list" id="order-student-list">`;
     current.forEach((item,i)=>{
-      let cls='';if(isChecked)cls=item===q.items[i]?'correct':'wrong';
-      inner+=`<li class="order-item ${cls}" draggable="${isChecked?'false':'true'}" data-item="${esc(item)}" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondrop="dropItem(event)" ondragleave="dragLeave(event)">
-        <span style="color:var(--muted);">${isChecked?'':' ⠿'}</span><div class="ord-num">${i+1}</div><span>${esc(item)}</span>
+      inner+=`<li class="order-item" draggable="true" data-item="${esc(item)}" ondragstart="dragStart(event)" ondragover="dragOver(event)" ondrop="dropItem(event)" ondragleave="dragLeave(event)">
+        <span style="color:var(--muted);"> ⠿</span><div class="ord-num">${i+1}</div><span>${esc(item)}</span>
       </li>`;
     });
     inner+=`</ul>`;
-    if(!isChecked)inner+=`<div class="fill-hint">Drag items into the correct order, then click Check Answer</div>`;
-    else{const correct=(ans||shuffled[currentQ]).join('|')===q.items.join('|');inner+=`<div class="feedback ${correct?'fb-correct':'fb-wrong'} show">${correct?'✓ Perfect order! '+q.pts+' pts':'✗ Incorrect order.'}</div>`;}
+    inner+=`<div class="fill-hint">Drag items into the correct order, then click Save &amp; Next</div>`;
   }
 
   document.getElementById('q-area').innerHTML=`<div class="q-card"><span class="q-type-badge ${tbCls[q.type]}">${typeLabel[q.type]}</span><div class="q-text">${esc(q.text)}</div>${inner}</div>`;
@@ -453,19 +444,19 @@ function renderQ(){
 // ════════════════════════════════════════════════════
 // ANSWERS
 // ════════════════════════════════════════════════════
-function selectMC(i){if(checked[currentQ])return;answers[currentQ]=i;renderQ();}
-function selectTF(v){if(checked[currentQ])return;answers[currentQ]=v;renderQ();}
+function selectMC(i){answers[currentQ]=i;renderQ();}
+function selectTF(v){answers[currentQ]=v;renderQ();}
 
-async function checkAnswer(){
+async function saveAndNext(){
   const q=activeQuiz.questions[currentQ];
   if(q.type==='fill'){const fi=document.getElementById('fill-input');answers[currentQ]=fi?fi.value.trim():'';}
   if(q.type==='order'){const items=[...document.querySelectorAll('#order-student-list .order-item')];answers[currentQ]=items.map(el=>el.dataset.item);}
-  if(q.type==='mc'&&answers[currentQ]===null){alert('Please select an option.');return;}
-  if(q.type==='tf'&&!answers[currentQ]){alert('Please select True or False.');return;}
-  checked[currentQ]=true;
-  // Save progress to DB every time an answer is checked
+  if(q.type==='mc'&&answers[currentQ]===null){alert('Please select an option first.');return;}
+  if(q.type==='tf'&&!answers[currentQ]){alert('Please select True or False first.');return;}
+  if(q.type==='fill'&&(!answers[currentQ]||answers[currentQ]==='')){{alert('Please type an answer first.');return;}}
   await saveProgress();
-  renderQ();
+  if(currentQ<activeQuiz.questions.length-1){currentQ++;renderQ();}
+  else renderQ();
 }
 
 function prevQ(){if(currentQ>0){currentQ--;renderQ();}}
@@ -521,16 +512,31 @@ function showResults(){
   document.getElementById('res-pct').textContent=`${pct}%`;
   document.getElementById('res-grade').textContent=grade;
   document.getElementById('res-grade').style.cssText=`color:${gc};background:${gb};`;
-  const typeLabel={mc:'Multiple Choice',tf:'True/False',fill:'Fill in Blank',order:'Ordering'};
-  document.getElementById('res-breakdown').innerHTML=activeQuiz.questions.map((q,i)=>{
-    const ans=answers[i];let earned2=0,max=0,detail='';
-    if(q.type==='mc'){max=Math.max(...q.options.map(o=>o.pts));if(ans!=null)earned2=Math.max(0,q.options[ans]?.pts||0);const chosen=ans!=null?q.options[ans]:null,best=q.options.find(o=>o.pts===max);detail=earned2===max?'Correct':ans===null?'Not answered':`Your: "${chosen?.text||''}" · Best: "${best?.text||''}"`;
-    }else if(q.type==='tf'){max=Math.max(parseFloat(q.truePts||0),parseFloat(q.falsePts||0));if(ans==='true')earned2=Math.max(0,parseFloat(q.truePts||0));else if(ans==='false')earned2=Math.max(0,parseFloat(q.falsePts||0));const cv=parseFloat(q.truePts||0)>=parseFloat(q.falsePts||0)?'true':'false';detail=earned2===max?'Correct':ans?`You: ${ans}, correct: ${cv}`:'Not answered';
-    }else if(q.type==='fill'){max=parseFloat(q.pts||1);const correct=ans&&q.answers.includes(ans.toLowerCase());if(correct)earned2=max;detail=correct?`Correct: "${ans}"`:`Your: "${ans||''}" · Accepted: ${q.answers.join(', ')}`;
-    }else if(q.type==='order'){max=parseFloat(q.pts||1);const order=ans||[],correct=order.join('|')===q.items.join('|');if(correct)earned2=max;detail=correct?'Correct order':'Incorrect order';}
-    const cls=earned2===max?'ri-correct':earned2>0?'ri-partial':'ri-wrong';
-    return `<div class="result-item ${cls}"><span class="ri-pts">${earned2}/${max}</span><div class="ri-q">${i+1}. ${esc(q.text)}</div><div class="ri-meta">${typeLabel[q.type]} · ${detail}</div></div>`;
-  }).join('');
+  // Show breakdown only if reviews are open
+  const reviewsOpen=activeQuiz.reviews_open||false;
+  if(reviewsOpen){
+    const typeLabel={mc:'Multiple Choice',tf:'True/False',fill:'Fill in Blank',order:'Ordering'};
+    document.getElementById('res-breakdown').innerHTML=
+      `<div style="padding:14px 18px;background:var(--green-light);border:1.5px solid var(--green);border-radius:10px;margin-bottom:20px;font-size:0.88rem;color:var(--green);font-weight:600;">
+        🔓 Reviews are open — here is your full breakdown
+      </div>`+
+      activeQuiz.questions.map((q,i)=>{
+        const ans=answers[i];let earned2=0,max=0,detail='';
+        if(q.type==='mc'){max=Math.max(...q.options.map(o=>o.pts));if(ans!=null)earned2=Math.max(0,q.options[ans]?.pts||0);const chosen=ans!=null?q.options[ans]:null,best=q.options.find(o=>o.pts===max);detail=earned2===max?'Correct':ans===null?'Not answered':`Your: "${chosen?.text||''}" · Best: "${best?.text||''}"`;
+        }else if(q.type==='tf'){max=Math.max(parseFloat(q.truePts||0),parseFloat(q.falsePts||0));if(ans==='true')earned2=Math.max(0,parseFloat(q.truePts||0));else if(ans==='false')earned2=Math.max(0,parseFloat(q.falsePts||0));const cv=parseFloat(q.truePts||0)>=parseFloat(q.falsePts||0)?'true':'false';detail=earned2===max?'Correct':ans?`You: ${ans}, correct: ${cv}`:'Not answered';
+        }else if(q.type==='fill'){max=parseFloat(q.pts||1);const correct=ans&&q.answers.includes(ans.toLowerCase());if(correct)earned2=max;detail=correct?`Correct: "${ans}"`:`Your: "${ans||''}" · Accepted: ${q.answers.join(', ')}`;
+        }else if(q.type==='order'){max=parseFloat(q.pts||1);const order=ans||[],correct=order.join('|')===q.items.join('|');if(correct)earned2=max;detail=correct?'Correct order':'Incorrect order';}
+        const cls=earned2===max?'ri-correct':earned2>0?'ri-partial':'ri-wrong';
+        return `<div class="result-item ${cls}"><span class="ri-pts">${earned2}/${max}</span><div class="ri-q">${i+1}. ${esc(q.text)}</div><div class="ri-meta">${typeLabel[q.type]} · ${detail}</div></div>`;
+      }).join('');
+  } else {
+    document.getElementById('res-breakdown').innerHTML=
+      `<div style="padding:20px 24px;background:var(--surface2);border:1.5px solid var(--border);border-radius:10px;text-align:center;">
+        <div style="font-size:1.5rem;margin-bottom:10px;">🔒</div>
+        <div style="font-weight:700;margin-bottom:6px;">Reviews Not Open Yet</div>
+        <div style="font-size:0.85rem;color:var(--muted);">Your submission has been recorded. The detailed breakdown will be available once the teacher opens reviews after the closing date. Log back in with your ID to check.</div>
+      </div>`;
+  }
   showPage('p-results');
 }
 

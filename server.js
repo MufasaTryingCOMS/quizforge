@@ -46,7 +46,7 @@ app.post('/api/quizzes', async (req, res) => {
   if (!title) return res.status(400).json({ error: 'Title is required' });
   const { data, error } = await supabase
     .from('quizzes')
-    .insert({ title, description: description || '', time_mins: time_mins || 0, questions: questions || [] })
+    .insert({ title, description: description || '', time_mins: time_mins || 0, questions: questions || [], reviews_open: false })
     .select()
     .single();
   if (error) return res.status(500).json({ error: error.message });
@@ -55,10 +55,25 @@ app.post('/api/quizzes', async (req, res) => {
 
 // PUT update quiz
 app.put('/api/quizzes/:id', async (req, res) => {
-  const { title, description, time_mins, questions } = req.body;
+  const { title, description, time_mins, questions, reviews_open } = req.body;
+  const update = { title, description, time_mins, questions };
+  if (reviews_open !== undefined) update.reviews_open = reviews_open;
   const { data, error } = await supabase
     .from('quizzes')
-    .update({ title, description, time_mins, questions })
+    .update(update)
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// PATCH toggle reviews open/closed
+app.patch('/api/quizzes/:id/reviews', async (req, res) => {
+  const { reviews_open } = req.body;
+  const { data, error } = await supabase
+    .from('quizzes')
+    .update({ reviews_open })
     .eq('id', req.params.id)
     .select()
     .single();
