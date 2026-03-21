@@ -128,6 +128,62 @@ app.delete('/api/submissions/:id', async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════
+// PROGRESS ROUTES
+// ════════════════════════════════════════════════════
+
+// GET progress for a responder on a quiz
+app.get('/api/progress/:quiz_id/:responder_id', async (req, res) => {
+  const { quiz_id, responder_id } = req.params;
+  const { data, error } = await supabase
+    .from('progress')
+    .select('*')
+    .eq('quiz_id', quiz_id)
+    .eq('responder_id', responder_id)
+    .single();
+  if (error) return res.status(404).json({ error: 'No progress found' });
+  res.json(data);
+});
+
+// POST save / update progress (upsert)
+app.post('/api/progress', async (req, res) => {
+  const { quiz_id, responder_id, name, answers, checked, shuffled, current_q } = req.body;
+  if (!quiz_id || !responder_id) return res.status(400).json({ error: 'quiz_id and responder_id are required' });
+  const { data, error } = await supabase
+    .from('progress')
+    .upsert({ quiz_id, responder_id, name, answers, checked, shuffled, current_q },
+      { onConflict: 'quiz_id,responder_id' })
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// DELETE progress after final submission (cleanup)
+app.delete('/api/progress/:quiz_id/:responder_id', async (req, res) => {
+  const { quiz_id, responder_id } = req.params;
+  const { error } = await supabase
+    .from('progress')
+    .delete()
+    .eq('quiz_id', quiz_id)
+    .eq('responder_id', responder_id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true });
+});
+
+// CHECK if responder has already submitted a quiz
+app.get('/api/check/:quiz_id/:responder_id', async (req, res) => {
+  const { quiz_id, responder_id } = req.params;
+  const { data, error } = await supabase
+    .from('submissions')
+    .select('id, earned, submitted_at, answers, time_taken')
+    .eq('quiz_id', quiz_id)
+    .eq('responder_id', responder_id)
+    .single();
+  if (error) return res.json({ submitted: false });
+  res.json({ submitted: true, submission: data });
+});
+
+// ════════════════════════════════════════════════════
 // CATCH-ALL — serve frontend
 // ════════════════════════════════════════════════════
 app.get('*', (req, res) => {

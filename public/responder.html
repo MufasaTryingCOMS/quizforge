@@ -244,9 +244,22 @@ async function renderPick(){
       el.innerHTML=`<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">No quizzes available</div><p>Check back later.</p></div>`;
       return;
     }
-    el.innerHTML=available.map(q=>{
+    // Check which quizzes this responder already submitted
+    const checks=await Promise.all(available.map(q=>api('GET',`/check/${q.id}/${encodeURIComponent(responderId)}`).catch(()=>({submitted:false}))));
+    el.innerHTML=available.map((q,i)=>{
       const pts=totalPts(q);
       const time=q.time_mins?q.time_mins+' min':'No time limit';
+      const done=checks[i]?.submitted;
+      if(done){
+        return `<div class="quiz-pick" style="opacity:0.6;cursor:not-allowed;border-color:var(--green);" onclick="showAlreadySubmitted('${q.id}')">
+          <div>
+            <div class="qp-title">${esc(q.title)}</div>
+            <div class="qp-meta">${q.questions.length} questions · ${pts} pts · ⏱ ${time}</div>
+            <div style="font-size:0.78rem;color:var(--green);font-weight:700;margin-top:4px;">✓ Already submitted — click to view your result</div>
+          </div>
+          <span style="font-size:1.3rem;color:var(--green);">✓</span>
+        </div>`;
+      }
       return `<div class="quiz-pick" onclick="startQuiz('${q.id}')">
         <div>
           <div class="qp-title">${esc(q.title)}</div>
@@ -258,22 +271,88 @@ async function renderPick(){
   }catch(e){el.innerHTML=`<div class="empty"><div class="empty-icon">⚠️</div><div class="empty-title">Could not load quizzes</div><p>${e.message}</p></div>`;}
 }
 
+// Show already-submitted result
+async function showAlreadySubmitted(quizId){
+  try{
+    const check=await api('GET',`/check/${quizId}/${encodeURIComponent(responderId)}`);
+    if(!check.submitted) return;
+    activeQuiz=await api('GET',`/quizzes/${quizId}`);
+    answers=check.submission.answers;
+    checked=new Array(activeQuiz.questions.length).fill(true);
+    shuffled=activeQuiz.questions.map(q=>q.type==='order'?[...q.items]:null);
+    submitted=true;
+    showResults();
+  }catch(e){alert('Could not load your previous result.');}
+}
+
 // ════════════════════════════════════════════════════
 // START QUIZ
 // ════════════════════════════════════════════════════
 async function startQuiz(id){
+  // Double-check they haven't already submitted
   try{
-    activeQuiz=await api('GET',`/quizzes/${id}`);
-  }catch(e){alert('Could not load quiz.');return;}
-  answers=new Array(activeQuiz.questions.length).fill(null);
-  checked=new Array(activeQuiz.questions.length).fill(false);
-  shuffled=activeQuiz.questions.map(q=>q.type==='order'?shuffle([...q.items]):null);
-  currentQ=0;submitted=false;startTime=Date.now();
+    const check=await api('GET',`/check/${id}/${encodeURIComponent(responderId)}`);
+    if(check.submitted){
+      alert('You have already submitted this quiz. Your previous result will be shown.');
+      showAlreadySubmitted(id);
+      return;
+    }
+  }catch(e){}
+
+  try{activeQuiz=await api('GET',`/quizzes/${id}`);}
+  catch(e){alert('Could not load quiz.');return;}
+
+  // Check for saved progress (resumed session)
+  let savedProgress=null;
+  try{savedProgress=await api('GET',`/progress/${id}/${encodeURIComponent(responderId)}`);}
+  catch(e){}
+
+  if(savedProgress){
+    // Restore where they left off
+    answers=savedProgress.answers;
+    checked=savedProgress.checked;
+    shuffled=savedProgress.shuffled;
+    currentQ=savedProgress.current_q||0;
+  } else {
+    answers=new Array(activeQuiz.questions.length).fill(null);
+    checked=new Array(activeQuiz.questions.length).fill(false);
+    shuffled=activeQuiz.questions.map(q=>q.type==='order'?shuffle([...q.items]):null);
+    currentQ=0;
+    // Save initial progress immediately
+    await saveProgress();
+  }
+
+  submitted=false;
+  startTime=Date.now();
   document.getElementById('qh-title').textContent=activeQuiz.title;
   showPage('p-quiz');
-  if(activeQuiz.time_mins&&activeQuiz.time_mins>0){secondsLeft=activeQuiz.time_mins*60;startTimer();}
-  else document.getElementById('timer').style.display='none';
+
+  if(activeQuiz.time_mins&&activeQuiz.time_mins>0){
+    // If resuming, reduce time by how long they've been going
+    secondsLeft=activeQuiz.time_mins*60;
+    startTimer();
+  } else {
+    document.getElementById('timer').style.display='none';
+  }
   renderQ();
+}
+
+// ════════════════════════════════════════════════════
+// SAVE PROGRESS
+// ════════════════════════════════════════════════════
+async function saveProgress(){
+  if(!activeQuiz||submitted) return;
+  try{
+    await api('POST','/progress',{
+      quiz_id:activeQuiz.id,
+      responder_id:responderId,
+      name:responderName,
+      answers:[...answers],
+      checked:[...checked],
+      shuffled:[...shuffled],
+      current_q:currentQ
+    });
+  }catch(e){console.warn('Progress save failed:',e);}
 }
 
 // ════════════════════════════════════════════════════
@@ -377,13 +456,16 @@ function renderQ(){
 function selectMC(i){if(checked[currentQ])return;answers[currentQ]=i;renderQ();}
 function selectTF(v){if(checked[currentQ])return;answers[currentQ]=v;renderQ();}
 
-function checkAnswer(){
+async function checkAnswer(){
   const q=activeQuiz.questions[currentQ];
   if(q.type==='fill'){const fi=document.getElementById('fill-input');answers[currentQ]=fi?fi.value.trim():'';}
   if(q.type==='order'){const items=[...document.querySelectorAll('#order-student-list .order-item')];answers[currentQ]=items.map(el=>el.dataset.item);}
   if(q.type==='mc'&&answers[currentQ]===null){alert('Please select an option.');return;}
   if(q.type==='tf'&&!answers[currentQ]){alert('Please select True or False.');return;}
-  checked[currentQ]=true;renderQ();
+  checked[currentQ]=true;
+  // Save progress to DB every time an answer is checked
+  await saveProgress();
+  renderQ();
 }
 
 function prevQ(){if(currentQ>0){currentQ--;renderQ();}}
@@ -409,6 +491,8 @@ async function doSubmit(){
       quiz_id:activeQuiz.id,name:responderName,responder_id:responderId,
       answers:[...answers],earned,time_taken:timeTaken
     });
+    // Clean up saved progress now that it's fully submitted
+    await api('DELETE',`/progress/${activeQuiz.id}/${encodeURIComponent(responderId)}`).catch(()=>{});
   }catch(e){console.error('Submission failed:',e);}
 }
 
